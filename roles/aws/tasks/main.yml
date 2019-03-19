@@ -1,0 +1,19 @@
+---
+- name: Provisionar maquinas
+  ec2_instance:
+   name: "{{ item.0 }}"
+   key_name: "{{ key_name }}"
+   aws_access_key: "{{ aws_access_key }}"
+   aws_secret_key: "{{ aws_secret_key }}"
+   region: "{{ region }}"
+   security_group: "{{ security_group }}"
+   instance_type: "{{ instance_type }}"
+   image_id: "{{ image_id }}"
+   wait: yes
+   state: running
+   tags:
+     maquina: "{{item.1}}"
+  with_together:
+   - "{{ name }}"
+   - "{{ tag }}"
+  register: ec2_instancia
