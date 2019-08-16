@@ -1,0 +1,41 @@
+---
+- name: Ip externo do harbor
+  ipify_facts:
+    timeout: 60
+  register: harborexternalip
+
+- set_fact: harborip="{{harborexternalip.ansible_facts.ipify_public_ip}}"
+
+- name: "wait for harbor to come up"
+  uri:
+    url: http://{{ harborip }}/api/health
+    status_code: 200
+    validate_certs: no
+  register: result
+  until: result.status == 200
+  retries: 60
+
+- name: Garbage Collector - checker
+  uri:
+    url: http://{{ harborip }}/api/system/gc
+    user: "{{ harboruser }}"
+    password: "{{ harborpassword }}"
+    method: GET
+    force_basic_auth: yes
+    status_code: 200
+    body_format: json
+    validate_certs: no
+  register: garbage
+
+- name: Garbage Collector
+  uri:
+    url: http://{{ harborip }}/api/system/gc/schedule
+    user: "{{ harboruser }}"
+    password: "{{ harborpassword }}"
+    method: POST
+    body: "{{ lookup('file','garbagecollector.json') }}"
+    force_basic_auth: yes
+    status_code: 201
+    body_format: json
+    validate_certs: no
+  when: garbage.json == []

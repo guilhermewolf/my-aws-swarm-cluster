@@ -1,0 +1,31 @@
+---
+- name: install needs
+  apt: name={{item}} state=present
+  with_items:
+    - python
+
+- name: Ensure docker-compose is installed and available
+  get_url:
+    url: https://github.com/docker/compose/releases/download/1.22.0/docker-compose-{{ ansible_system }}-{{ ansible_userspace_architecture }}
+    dest: /usr/local/bin/docker-compose
+    mode: 'u+x,g+x'
+
+- name: Unzip Harbor sources
+  unarchive:
+    src: https://storage.googleapis.com/harbor-releases/release-1.8.0/harbor-online-installer-v1.8.1.tgz
+    dest: /usr/local/
+    remote_src: yes
+
+- name: harbor.yml configuration
+  template:
+    src: harbor.yml.j2
+    dest: /usr/local/harbor/harbor.yml
+
+- name: execute install.sh
+  shell: "/usr/local/harbor/install.sh --with-clair"
+  args:
+    chdir: /usr/local/harbor/
+
+# - include: openssl.yml
+#Chamadas da API
+- include: api.yml

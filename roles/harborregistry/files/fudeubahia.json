@@ -1,0 +1,10 @@
+{
+  "project_name": "fudeubahia",
+  "metadata": {
+    "public": "false",
+    "enable_content_trust": "false",
+    "prevent_vul": "false",
+    "severity": "low",
+    "auto_scan": "true"
+  }
+}
