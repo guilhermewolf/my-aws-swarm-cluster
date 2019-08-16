@@ -1,0 +1,36 @@
+---
+- name: Listar Amis
+  ec2_ami_facts:
+    aws_access_key: "{{ aws_access_key }}"
+    aws_secret_key: "{{ aws_secret_key }}"
+    region: "{{ regiao }}"
+    filters:
+      name: ubuntu-packer
+  register: ami_find
+
+- name: Apagar amis
+  ec2_ami:
+    aws_access_key: "{{ aws_access_key }}"
+    aws_secret_key: "{{ aws_secret_key }}"
+    image_id: "{{ ami_find.images[0].image_id }}"
+    region: "{{ regiao }}"
+    state: absent
+  when: ami_find.images != []
+
+- name: Verificando se o snapshot existe
+  ec2_snapshot_facts:
+    aws_access_key: "{{ aws_access_key }}"
+    aws_secret_key: "{{ aws_secret_key }}"
+    region: "{{ regiao }}"
+    filters:
+      "tag:Name": ubuntu-packer
+  register: snapshot_find
+
+- name: Garantindo que o snapshot não exista
+  ec2_snapshot:
+    aws_access_key: "{{ aws_access_key }}"
+    aws_secret_key: "{{ aws_secret_key }}"
+    region: "{{ regiao }}"
+    state: absent
+    snapshot_id: "{{ snapshot_find.snapshots[0].snapshot_id }}"
+  when: snapshot_find.snapshots != []
