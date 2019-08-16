@@ -1,0 +1,116 @@
+---
+- name: Coletar info da instancia EC2
+  ec2_instance_facts:
+    aws_access_key: "{{ aws_access_key }}"
+    aws_secret_key: "{{ aws_secret_key }}"
+    region: "{{ regiao_aws }}"
+    filters:
+      "tag:Name": manager
+      "instance-state-name": running
+  register: info_instancia
+
+- name: Cria launch config
+  ec2_lc:
+    aws_access_key: "{{ aws_access_key }}"
+    aws_secret_key: "{{ aws_secret_key }}"
+    name: teste_lc
+    image_id: "{{ info_instancia.instances[0].image_id }}"
+    vpc_id: "{{ info_instancia.instances[0].network_interfaces[0].vpc_id }}"
+    key_name: "{{ chave_ssh }}"
+    region: "{{ regiao_aws }}"
+    security_groups: "{{ info_instancia.instances[0].network_interfaces[0].groups[0].group_id }}"
+    instance_type: "{{ tipo_instancia }}"
+    assign_public_ip: yes
+    user_data: |
+        #!/bin/bash
+        docker swarm join --token="{{ token_node }}" "{{ host_manager }}"
+
+        sudo cat <<EOF >> /etc/init.d/swarm-leave
+        #!/bin/bash
+        docker swarm leave --force
+        EOF
+
+        sudo chmod +x /etc/init.d/swarm-leave
+        sudo ln -s /etc/init.d/swarm-leave /etc/rc0.d/K01swarm-leave
+
+- name: Cria grupo autoscaling
+  ec2_asg:
+    aws_access_key: "{{ aws_access_key }}"
+    aws_secret_key: "{{ aws_secret_key }}"
+    name: teste_asg
+    launch_config_name: teste_lc
+    health_check_period: 60
+    health_check_type: EC2 #  ELB
+    replace_all_instances: yes
+    min_size: 1
+    max_size: 5
+    desired_capacity: 1
+    region: "{{ regiao_aws }}"
+    vpc_zone_identifier: "{{ info_instancia.instances[0].network_interfaces[0].subnet_id }}"
+  register: asgrupo
+
+- name: Politica autoscale down
+  ec2_scaling_policy:
+    aws_access_key: "{{ aws_access_key }}"
+    aws_secret_key: "{{ aws_secret_key }}"
+    state: present
+    region: "{{ regiao_aws }}"
+    name: pm-policy-down
+    adjustment_type: ChangeInCapacity
+    asg_name: teste_asg
+    scaling_adjustment: -1
+    min_adjustment_step: -1
+    cooldown: 300
+  register: scale_down
+
+- name: Politica autoscale up
+  ec2_scaling_policy:
+    aws_access_key: "{{ aws_access_key }}"
+    aws_secret_key: "{{ aws_secret_key }}"
+    state: present
+    region: "{{ regiao_aws }}"
+    name: pm-policy-up
+    adjustment_type: ChangeInCapacity
+    asg_name: teste_asg
+    scaling_adjustment: 1
+    min_adjustment_step: 1
+    cooldown: 300
+  register: scale_up
+
+- name: Cria alarme scale down
+  ec2_metric_alarm:
+    aws_access_key: "{{ aws_access_key }}"
+    aws_secret_key: "{{ aws_secret_key }}"
+    state: present
+    region: "{{ regiao_aws }}"
+    name: "cpu-low"
+    metric: CPUUtilization
+    namespace: "AWS/EC2"
+    statistic: Average
+    comparison: "<="
+    threshold: 10.0
+    period: 300
+    evaluation_periods: 3
+    unit: "Percent"
+    dimensions:
+      InstanceId: "{{ info_instancia.instances[0].instance_id }}"
+    alarm_actions: ["{{ scale_down.arn }}"]
+
+- name: Cria alarme scale up
+  ec2_metric_alarm:
+    aws_access_key: "{{ aws_access_key }}"
+    aws_secret_key: "{{ aws_secret_key }}"
+    state: present
+    region: "{{ regiao_aws }}"
+    name: "cpu-high"
+    metric: CPUUtilization
+    namespace: "AWS/EC2"
+    statistic: Average
+    comparison: ">="
+    threshold: 55.0
+    period: 300
+    evaluation_periods: 1
+    unit: "Percent"
+    dimensions:
+      InstanceId: "{{ info_instancia.instances[0].instance_id }}"
+    alarm_actions: ["{{ scale_up.arn }}"]

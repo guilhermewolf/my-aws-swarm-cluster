@@ -1,0 +1,15 @@
+---
+# defaults file for autoscale
+
+# AWS
+aws_access_key: "{{ lookup('env','AWS_ACCESS_KEY_ID') }}"
+aws_secret_key: "{{ lookup('env','AWS_SECRET_ACCESS_KEY') }}"
+regiao_aws: "us-east-1"
+
+# Para template
+chave_ssh: chave-swarm
+tipo_instancia: t2.micro
+
+# Para script user_data
+token_node: "{{ hostvars[groups['manager'].0].swarm_token_worker.stdout }}"
+host_manager: "{{ hostvars[groups['manager'].0].swarm_manager_uri.stdout }}"
