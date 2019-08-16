@@ -1,0 +1,6 @@
+---
+- name: garantindo a chave para as maquinas 
+  ec2_key:
+    name: "{{ chave_ssh }}"
+    region:  "{{ regiao }}"
+    key_material: "{{ chave_publica }}"

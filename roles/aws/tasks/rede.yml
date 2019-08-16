@@ -1,0 +1,51 @@
+---
+- name: garante a VPC
+  ec2_vpc_net:
+    name: "{{ nome_vpc }}"
+    cidr_block: "{{ cidrvpc }}"
+    region: "{{ regiao }}"
+  register: info_vpc
+
+- name: garante a subnet para a az1
+  ec2_vpc_subnet:
+    state: present
+    vpc_id: "{{ info_vpc.vpc.id }}"
+    cidr: "{{ cidraz1 }}"
+    map_public: yes
+    region: "{{ regiao }}"
+    az: "{{ aws_zone_a }}"
+    tags:
+      Name: subnet-az1
+  register: info_subnet_az1
+
+- name: garante a subnet para a az2
+  ec2_vpc_subnet:
+    state: present
+    vpc_id: "{{ info_vpc.vpc.id }}"
+    cidr: "{{ cidraz2 }}"
+    map_public: yes
+    region: "{{ regiao }}"
+    az: "{{ aws_zone_b }}"
+    tags:
+      Name: subnet-az2
+  register: info_subnet_az2
+
+- name: garante o internet gateway para vpc
+  ec2_vpc_igw:
+   region: "{{ regiao }}"
+   vpc_id: "{{ info_vpc.vpc.id }}"
+   state: present
+  register: igw
+
+- name: garante a rota na vpc para o internet gateway
+  ec2_vpc_route_table:
+    vpc_id: "{{ info_vpc.vpc.id }}"
+    region: "{{ regiao }}"
+    tags:
+       Name: Public
+    subnets:
+      - "{{ info_subnet_az1.subnet.id }}"
+      - "{{ info_subnet_az2.subnet.id }}"
+    routes:
+     - dest: 0.0.0.0/0
+       gateway_id: "{{ igw.gateway_id }}"

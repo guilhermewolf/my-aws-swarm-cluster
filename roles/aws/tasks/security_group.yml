@@ -1,0 +1,17 @@
+---
+- name: garante security group
+  ec2_group:
+    name: "{{ nome_firewall }}"
+    description: rules firewall
+    vpc_id: "{{ vpc_id }}"
+    # aws_access_key: "{{key_aws}}"
+    # aws_secret_key: "{{secret_aws}}"
+    region: "{{ regiao }}"
+    rules:
+      - proto: "{{ protocolo_firewall }}"
+        ports: "{{ portas_firewall }}"
+        cidr_ip: "{{ src_firewall }}"
+      - proto: all
+        cidr_ip: "{{ cidraz1 }}"
+      - proto: all
+        cidr_ip: "{{ cidraz2 }}"

@@ -1,2 +1,33 @@
 ---
 # defaults file for aws
+
+# acesso a conta
+aws_access_key: "{{ lookup('env','AWS_ACCESS_KEY_ID') }}"
+aws_secret_key: "{{ lookup('env','AWS_SECRET_ACCESS_KEY') }}"
+
+# para vpc
+nome_vpc: vpclabteste
+cidrvpc: "192.168.0.0/16"
+cidraz1: "192.168.200.0/24"
+cidraz2: "192.168.201.0/24"
+regiao: "us-east-1"
+aws_zone_a: "us-east-1a"
+aws_zone_b: "us-east-1b"
+
+# para chave
+chave_ssh: chave-swarm
+chave_publica: "{{ lookup('file', 'chaves/chave.pub') }}"
+
+# para security group
+nome_firewall: sglabfirewall
+vpc_id: "{{ info_vpc.vpc.id }}"
+protocolo_firewall: tcp
+portas_firewall: ['22','80','8080','443','2377','9000']
+src_firewall: ['0.0.0.0/0']
+
+# para criacao das maquinas
+nome_instancia: ['manager'] # ['manager','jenkins', 'graylog','registry']
+tag_maquina: ['manager'] # ['manager','jenkins', 'graylog','registry']
+tipo_instancia: t2.micro
+espaco_disco: 50
+subnet_id: "{{ info_subnet.subnet.id }}"

@@ -1,0 +1,36 @@
+---
+- name: coleta id da ami para provisionar registry
+  ec2_ami_facts:
+    aws_access_key: "{{ aws_access_key }}"
+    aws_secret_key: "{{ aws_secret_key }}"
+    region: "{{ regiao }}"
+    filters:
+      name: ubuntu-packer
+  register: info_ami
+
+- name: garantindo a existencia da registry
+  ec2_instance:
+    aws_access_key: "{{ aws_access_key }}"
+    aws_secret_key: "{{ aws_secret_key }}"
+    name: harbor
+    key_name: "{{ chave_ssh }}"
+    region: "{{ regiao }}"
+    security_group: "{{ nome_firewall }}"
+    instance_type: "{{ tipo_instancia }}"
+    image_id: "{{ info_ami.images[0].image_id }}"
+    network:
+      assign_public_ip: true
+    wait: yes
+    state: running
+    volumes:
+    - device_name: /dev/sda1
+      ebs:
+        volume_type: gp2
+        volume_size: "{{ espaco_disco }}"
+    vpc_subnet_id: "{{ info_subnet_az1.subnet.id  }}"
+    tags:
+      maquina: registry
+  when:
+    - info_subnet_az1.subnet.id  is defined
+    - info_vpc.vpc.id is defined
+  register: ec2_instancia
